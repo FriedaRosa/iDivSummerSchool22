@@ -25,11 +25,15 @@
 #
 # -   We will read all files into R simultaneously just by the indication of this folder, so make sure you can find it easily
 
+# set working directory to the folder where the data is:
+setwd("~/iDiv/iDiv SummerSchool22/Class_Spectrometer/R")
 
-species_names <- read.csv2("Thursday_data/Species_names_phylo_color.csv")
+# a vector with the species names and abbreviations used in the Refl. measurements:
+species_names <- read.csv2("Thursday_data/Species_names_phylo_color.csv") 
 rownames(species_names) <- species_names$x
-#Utility function:
-# Function to merge data frames in list
+
+
+# Utility function to merge data frames in list:
 multi_join <- function(list_of_loaded_data, join_func, ...)
 {
   require("dplyr")
@@ -45,7 +49,7 @@ multi_join <- function(list_of_loaded_data, join_func, ...)
 # install.packages("dplyr")
 # install.packages("stringr")
 # install.packages("tidyr")
-#install.packages("reshape2")
+# install.packages("reshape2")
 
 library(pavo)
 library(dplyr)
@@ -61,13 +65,17 @@ library(reshape2)
 # *With) we cut out spectral noise.
 
 
-specs <- getspec("SummerSchool/Reflectance/", ext = "txt", lim = c(300, 680))
+specs <- getspec("SummerSchool/Reflectance/", ext = "txt", lim = c(300, 680)) 
+# here we already cut out the noise at the borders of the spectral range. 
+# note that R will throw a warning if chroma is calculated not from the whole range, but that's okay because we don't want the noise to be in there
 
 par(mfrow=c(8,4))  
 explorespec(specs, by = 3, lwd = 2) # by = indicates how many replicates should be plotted into one window
 
-# let's smooth the curves to exclude calculation errors due to noise in the measurement
 
+
+# let's smooth the curves to exclude calculation errors due to noise in the measurement (recommended)
+# anyway, all fuctions in the following are run for both: smoothed and raw data for your comparison
 specs2 <- procspec(specs, opt = "smooth")
 
 
@@ -82,7 +90,7 @@ specs2 <- procspec(specs, opt = "smooth")
 # You can indicate any sequence of letter/signs/numbers that you would like to filter for in the column names of your reflection measurement.
 
 
-## Automated in loop:
+## Automated subsetting for species in loop:
 name_specs <- colsplit(names(specs[,-1]), "-", c("species", "replicate", " "))[,-3]
 name_specs <- unique(name_specs$species)
 
@@ -101,7 +109,7 @@ for (i in seq_along(name_specs)) {
 }
 
 
-## Manually per hand
+## You could also do it manually by hand like this:
 # refl_sp1 <- subset(specs, "sp1") # based on species id in names in reflectance df
 # refl_sp2 <- subset(specs, "sp2")
 # refl_sp3 <- subset(specs, "sp3")
@@ -228,6 +236,10 @@ df3 <- merge(split_df2[-c(3)], species_names, by.x="species", by.y="x")
 
 # here follows the approach how to do it for species / 
 # For this, we will first calculate average reflection spectra for each species and then perform the calculation of metrics.
+# in order to calculate summarized metrics, we have to create a vector with species names to match to the data 
+# (same order, names are dublicated for all replicates)
+
+
 # raw:
 spp2 <- split_df$species 
 sppspec <- aggspec(specs, by=spp2, FUN = mean)
@@ -239,31 +251,28 @@ sppspec2 <- aggspec(specs2, by=spp2, FUN = mean)
 species_metrics2 <- summary(sppspec2, subset = T)
 species_metrics2$sp_id <- rownames(species_metrics2)
 
-
 species_metrics <- merge(species_metrics, species_names, by.x="sp_id", by.y="x" )
 species_metrics2 <- merge(species_metrics2, species_names, by.x="sp_id", by.y="x" )
 
-  df4 <- data.frame(species = species_metrics$species,
+
+df4 <- data.frame(species = species_metrics$species,
     sp_id = species_metrics$sp_id,
     meanBrightness = species_metrics$B2,
     Chroma = species_metrics$S8,
     Hue = species_metrics$H1)
-  df4
+df4
   
-  write.csv(df4, "Thursday_data/Colorimetric_variables_SS22.csv")
-  
-  df5 <- data.frame(species = species_metrics2$species,
+write.csv(df4, "Thursday_data/Colorimetric_variables_SS22.csv")
+
+
+df5 <- data.frame(species = species_metrics2$species,
                    sp_id = species_metrics2$sp_id,
                    meanBrightness = species_metrics2$B2,
                    Chroma = species_metrics2$S8,
                    Hue = species_metrics2$H1)
-  df5
-  write.csv(df5, "Thursday_data/Colorimetric_variables_smoothed_SS22.csv")
+df5
+write.csv(df5, "Thursday_data/Colorimetric_variables_smoothed_SS22.csv")
 
-
-
-# with [-1] we remove the name of the wavelength column
-# with [-2] we remove the replicate number (and appendix from software)
 
 # # Now we calculate the mean across individuals (1.) and look at averaged curves: 
 # (not relevant here since we did not take samples for different individuals)
